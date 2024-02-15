@@ -1,0 +1,16 @@
+[Unit]
+	Description=Minecraft server
+	After=overleaf.service
+	Wants=overleaf.service
+
+[Service]
+	Type=exec
+	User=http
+	Group=http
+	WorkingDirectory=/srv/olserve/
+	ExecStart=/srv/olserve/olserve
+	Restart=on-failure
+	RestartSec=5s
+
+[Install]
+	WantedBy=multi-user.target

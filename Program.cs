@@ -76,19 +76,15 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 			try
 			{
 				await ep.Refresh();
-				var dat = ep.Data;
-				
-				ctx.Response.ContentType = "application/pdf";
-				await closeWith(ctx, 200, dat);
-				continue;
 			}
 			catch (Exception ex)
 			{
 				// TODO try to refresh logins
 				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data due to exception: {ex}");
-				await closeWith(ctx, 200, ep.Data);
-				continue;
 			}
+
+			ctx.Response.ContentType = "application/pdf";
+			await closeWith(ctx, 200, ep.Data);
 		}
 	}
 

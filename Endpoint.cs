@@ -43,7 +43,7 @@ public class Endpoint
 		var cmp = await project.Compile(stopOnFirstError: true);
 
 		if(! cmp.IsSuccess(out var pdf))
-			throw new Exception("Compilation didn't produce PDF");
+			throw new CompileFailedException();
 
 		var dat = await (await project.GetOutFile(pdf)).ReadAsByteArrayAsync();
 

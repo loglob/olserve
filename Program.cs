@@ -77,10 +77,14 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 			{
 				await ep.Refresh();
 			}
-			catch (Exception ex)
+			catch(CompileFailedException)
+			{
+				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data because the compilation failed");
+			}
+			catch(Exception ex)
 			{
 				// TODO try to refresh logins
-				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data due to exception: {ex}");
+				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data due to unknown exception: {ex}");
 			}
 
 			ctx.Response.ContentType = "application/pdf";

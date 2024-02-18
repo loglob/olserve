@@ -34,19 +34,27 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 	private static readonly byte[] noUrlMessage = Encoding.UTF8.GetBytes("No URL information (how did that happen)");
 	private static readonly byte[] noSuchFileMessage = Encoding.UTF8.GetBytes("The requested path doesn't exist on the server");
 
-	private static async Task closeWith(HttpListenerContext ctx, int status, byte[] message)
+	private static async Task closeWith(HttpListenerContext ctx, int status, byte[] message, string contentType = "text/plain")
 	{
-		ctx.Response.StatusCode = status;
-		ctx.Response.ContentLength64 = message.Length;
-		await ctx.Response.OutputStream.WriteAsync(message);
-		ctx.Response.OutputStream.Close();
+		try
+		{
+			ctx.Response.ContentType = contentType;
+			ctx.Response.StatusCode = status;
+			ctx.Response.ContentLength64 = message.Length;
+			await ctx.Response.OutputStream.WriteAsync(message);
+			ctx.Response.OutputStream.Close();
 
-		ctx.Response.Close();
+			ctx.Response.Close();			
+		}
+		catch (System.Exception ex)
+		{
+			await Console.Error.WriteLineAsync($"Failed to send response: {ex.Message}");
+		}
+
 	}
 
 	private async Task run()
 	{
-
 		Console.CancelKeyPress += (_1, _2) => listener.Stop();
 		AppDomain.CurrentDomain.ProcessExit += (_1, _2) => listener.Stop();
 
@@ -58,7 +66,6 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 
 			if(ctx.Request.Url is null)
 			{
-				ctx.Response.ContentType = "text/plain";
 				await closeWith(ctx, 400, noUrlMessage);
 				continue;
 			}
@@ -68,7 +75,6 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 			if(! Routes.TryGetValue(p, out var ep))
 			{
 				Console.WriteLine($"[INFO] Missing path '{p}' requested");
-				ctx.Response.ContentType = "text/plain";
 				await closeWith(ctx, 404, noSuchFileMessage);
 				continue;
 			}
@@ -87,8 +93,7 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data due to unknown exception: {ex}");
 			}
 
-			ctx.Response.ContentType = "application/pdf";
-			await closeWith(ctx, 200, ep.Data);
+			await closeWith(ctx, 200, ep.Data, "application/pdf");
 		}
 	}
 

@@ -1,5 +1,5 @@
 [Unit]
-	Description=Minecraft server
+	Description=Overleaf document proxy
 	After=overleaf.service
 	Wants=overleaf.service
 
@@ -11,6 +11,7 @@
 	ExecStart=/srv/olserve/olserve
 	Restart=on-failure
 	RestartSec=5s
+	LimitCORE=0
 
 [Install]
 	WantedBy=multi-user.target

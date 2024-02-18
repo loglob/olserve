@@ -85,7 +85,7 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 			}
 			catch(CompileFailedException)
 			{
-				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data because the compilation failed");
+				Console.WriteLine($"[WARN][{ep.Route}] Current revision doesn't compile, skipping it");
 			}
 			catch(Exception ex)
 			{

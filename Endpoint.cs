@@ -62,8 +62,16 @@ public class Endpoint
 
 		if(current is null || serverRev > current.Version)
 		{
-			var data = await runCompile();
-			current = new(serverRev, data);
+			try
+			{
+				var data = await runCompile();
+				current = new(serverRev, data);
+			}
+			catch(CompileFailedException) when(current is not null)
+			{
+				current = current with { Version = serverRev };
+				throw;
+			}
 		}
 		else if(serverRev < current.Version)
 			await Console.Error.WriteLineAsync($"[WARN][{Route}] somehow time traveled from version {current.Version} to {serverRev}");

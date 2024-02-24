@@ -7,7 +7,7 @@ using static System.StringComparison;
 
 namespace Olserve;
 
-public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
+public class Program(Config Conf, Dictionary<string, Worker> Routes)
 {
 	private static readonly JsonSerializerOptions opt = new() {
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -34,7 +34,7 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 	private static readonly byte[] noUrlMessage = Encoding.UTF8.GetBytes("No URL information (how did that happen)");
 	private static readonly byte[] noSuchFileMessage = Encoding.UTF8.GetBytes("The requested path doesn't exist on the server");
 
-	private static async Task closeWith(HttpListenerContext ctx, int status, byte[] message, string contentType = "text/plain")
+	public static async Task CloseWith(HttpListenerContext ctx, int status, byte[] message, string contentType = "text/plain")
 	{
 		try
 		{
@@ -46,19 +46,16 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 
 			ctx.Response.Close();			
 		}
-		catch (System.Exception ex)
+		catch(Exception ex)
 		{
 			await Console.Error.WriteLineAsync($"Failed to send response: {ex.Message}");
 		}
-
 	}
 
 	private async Task run()
 	{
-		Console.CancelKeyPress += (_1, _2) => listener.Stop();
-		AppDomain.CurrentDomain.ProcessExit += (_1, _2) => listener.Stop();
-
 		listener.Start();
+		Console.CancelKeyPress += (_1, _2) => listener.Stop();
 
 		while(listener.IsListening)
 		{
@@ -66,7 +63,7 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 
 			if(ctx.Request.Url is null)
 			{
-				await closeWith(ctx, 400, noUrlMessage);
+				await CloseWith(ctx, 400, noUrlMessage);
 				continue;
 			}
 
@@ -75,25 +72,11 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 			if(! Routes.TryGetValue(p, out var ep))
 			{
 				Console.WriteLine($"[INFO] Missing path '{p}' requested");
-				await closeWith(ctx, 404, noSuchFileMessage);
+				await CloseWith(ctx, 404, noSuchFileMessage);
 				continue;
 			}
 
-			try
-			{
-				await ep.Refresh();
-			}
-			catch(CompileFailedException)
-			{
-				Console.WriteLine($"[WARN][{ep.Route}] Current revision doesn't compile, skipping it");
-			}
-			catch(Exception ex)
-			{
-				// TODO try to refresh logins
-				Console.WriteLine($"[WARN][{ep.Route}] Serving possibly outdated data due to unknown exception: {ex}");
-			}
-
-			await closeWith(ctx, 200, ep.Data, "application/pdf");
+			ep.Serve(ctx);
 		}
 	}
 
@@ -108,14 +91,14 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 		}
 
 		var routes = conf.Routes.ToArray();
-		var endpoints = new Endpoint[routes.Length];
+		var endpoints = new Worker[routes.Length];
 
 		Console.WriteLine("Initializing projects...");
 		await Parallel.ForAsync(0, routes.Length, async (i, _) => {
 			try
 			{
 				var r = routes[i];
-				endpoints[i] = await Endpoint.Create(r.Key, new Uri(r.Value));
+				endpoints[i] = new Worker(await Endpoint.Create(r.Key, new Uri(r.Value)));
 			}
 			catch(Exception ex)
 			{
@@ -161,7 +144,7 @@ public class Program(Config Conf, Dictionary<string, Endpoint> Routes)
 		if(conf is null || conf.Routes is null || conf.Routes.Any(kvp => kvp.Key is null || kvp.Value is null))
 			throw new NullReferenceException("Config contains null values");
 
-		var prog = await Program.init(conf);
+		var prog = await init(conf);
 		Console.WriteLine($"Starting listener on port {conf.Port}...");
 
 		await prog.run();

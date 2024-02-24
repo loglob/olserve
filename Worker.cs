@@ -28,9 +28,12 @@ public class Worker
 			{
 				await endpoint.Refresh();
 			}
-			catch(CompileFailedException)
+			catch(CompileFailedException cfe)
 			{
-				Console.WriteLine($"[WARN][{endpoint.Route}] Current revision doesn't compile, skipping it");
+				Console.WriteLine(cfe.Transient
+					? $"[WARN][{endpoint.Route}] Tried recompiling too soon, serving possibly outdated data"
+					: $"[WARN][{endpoint.Route}] Current revision doesn't compile, skipping it"
+				);
 			}
 			catch(Exception ex)
 			{

@@ -43,12 +43,7 @@ public class Endpoint
 		var cmp = await project.Compile(stopOnFirstError: true);
 
 		if(! cmp.IsSuccess(out var pdf))
-			throw new CompileFailedException(cmp.Status switch {
-				"success" => true,
-				"failure" => true,
-				"too-recently-compiled" => false,
-				var x => throw new ArgumentException($"Unknown compile status '{x}'")
-			});
+			throw new CompileFailedException(cmp.Status);
 
 		var dat = await (await project.GetOutFile(pdf)).ReadAsByteArrayAsync();
 
@@ -72,7 +67,7 @@ public class Endpoint
 				var data = await runCompile();
 				current = new(serverRev, data);
 			}
-			catch(CompileFailedException cfe) when(!cfe.Transient && current is not null)
+			catch(CompileFailedException cfe) when(cfe.Persistent && current is not null)
 			{
 				current = current with { Version = serverRev };
 				throw;

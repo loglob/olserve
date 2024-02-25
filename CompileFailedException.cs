@@ -1,6 +1,17 @@
+using Olspy;
+
+using static Olspy.Protocol.CompileStatus;
+
 namespace Olserve;
 
-public class CompileFailedException(bool transient) : Exception("Compilation failed to produce a PDF")
+public class CompileFailedException(Protocol.CompileStatus status) : Exception("Compilation failed to produce a PDF")
 {
-	public readonly bool Transient = transient;
+	public readonly Protocol.CompileStatus Status = status;
+
+	public readonly bool Persistent = status switch {
+		Success => true,
+		Failure => true,
+		StoppedOnFirstError => true,
+		_ => false
+	};
 }

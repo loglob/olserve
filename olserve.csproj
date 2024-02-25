@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="olspy" Version="2.1.2" />
+    <PackageReference Include="olspy" Version="2.2.0" />
   </ItemGroup>
 
 </Project>

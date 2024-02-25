@@ -30,9 +30,9 @@ public class Worker
 			}
 			catch(CompileFailedException cfe)
 			{
-				Console.WriteLine(cfe.Transient
-					? $"[WARN][{endpoint.Route}] Tried recompiling too soon, serving possibly outdated data"
-					: $"[WARN][{endpoint.Route}] Current revision doesn't compile, skipping it"
+				Console.WriteLine(cfe.Persistent
+					? $"[WARN][{endpoint.Route}] Current revision doesn't compile, skipping it"
+					: $"[WARN][{endpoint.Route}] Transient compile error: {cfe.Status}"
 				);
 			}
 			catch(Exception ex)

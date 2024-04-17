@@ -1,10 +1,11 @@
 using System.Net;
+using Olspy;
 
 namespace Olserve;
 
 public class Worker
 {
-	private readonly Endpoint endpoint;
+	private Endpoint endpoint;
 	private readonly AwaitableQueue<HttpListenerContext> incoming = new();
 	private readonly Task workerTask;
 
@@ -34,6 +35,19 @@ public class Worker
 					? $"[WARN][{endpoint.Route}] Current revision doesn't compile, skipping it"
 					: $"[WARN][{endpoint.Route}] Transient compile error: {cfe.Status}"
 				);
+			}
+			catch(HttpStatusException hse) when (hse.StatusCode == HttpStatusCode.Forbidden)
+			{
+				Console.WriteLine($"[WARN][{endpoint.Route}] Session lapsed, re-authenticating");
+
+				try
+				{
+					endpoint = await Endpoint.Create(endpoint.Route, endpoint.Link);
+				}
+				catch(Exception ex)
+				{
+					Console.WriteLine($"[WARN][{endpoint.Route}] Failed to re-authenticate: {ex.Message}");
+				}
 			}
 			catch(Exception ex)
 			{

@@ -42,7 +42,7 @@ public class Worker
 
 				try
 				{
-					endpoint = await Endpoint.Create(endpoint.Route, endpoint.Link);
+					endpoint = await Endpoint.Create(endpoint);
 				}
 				catch(Exception ex)
 				{

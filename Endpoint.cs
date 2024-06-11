@@ -7,28 +7,36 @@ public class Endpoint
 {
 	private record Revision( uint Version, byte[] Data );
 
-	public static async Task<Endpoint> Create(string route, Uri uri)
+	private static async Task<Endpoint> Create(string route, Uri uri, string? path)
 	{
 		var proj = await Project.Open(uri, new(TimeSpan.FromMinutes(5)));
-		var ep = new Endpoint(route, uri, proj);
+		var ep = new Endpoint(route, uri, proj, path);
 
 		await ep.Refresh();
 
 		return ep;
 	}
 
+	public static Task<Endpoint> Create(string route, BuildConfig conf)
+		=> Create(route, new Uri(conf.Link), conf.MainFile);
+
+	public static Task<Endpoint> Create(Endpoint e)
+		=> Create(e.Route, e.Link, e.MainFile);
+
 	public readonly Uri Link;
 	public readonly string Route;
+	public readonly string? MainFile;
 	private readonly Project project;
 	private Revision? current = null;
 
 	public byte[] Data
 		=> current!.Data;
 
-	private Endpoint(string route, Uri link, Project project)
+	private Endpoint(string route, Uri link, Project project, string? file)
 	{
 		this.Route = route;
 		this.Link = link;
+		this.MainFile = file;
 		this.project = project;
 	}
 
@@ -38,9 +46,27 @@ public class Endpoint
 	/// </summary>
 	private async Task<byte[]> runCompile()
 	{
+		string? mainID = null;
+
+		if(MainFile is not null)
+		{
+			var info = await project.GetInfo(false);
+			var file = info.Project.RootFolder[0].Lookup(MainFile);
+
+
+			if(file is null)
+			{
+				Console.WriteLine($"[WARN][{Route}] Path '{MainFile}' does not exist in project");
+				throw new CompileFailedException(Protocol.CompileStatus.Failure);
+			}
+
+
+			mainID = file.ID;
+		}
+
 		Stopwatch sw = new();
 		sw.Start();
-		var cmp = await project.Compile(stopOnFirstError: true);
+		var cmp = await project.Compile(mainID, stopOnFirstError: true);
 
 		if(! cmp.IsSuccess(out var pdf))
 			throw new CompileFailedException(cmp.Status);

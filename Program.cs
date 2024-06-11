@@ -23,7 +23,10 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 
 		The configuration is an object containing:
 			- port (optional, default 80): The port to listen on for HTTP
-			- routes: A string -> string dictionary that maps paths onto overleaf project join links.
+			- routes: A dictionary that maps HTTP paths onto build configurations, which are objects with:
+				- An object containing:
+					- link: A join link to an overleaf project
+					- mainFile (optional): A path within that project to the file to use as main file for compiling
 		Note that route links must be read-write links, read-only links won't work.
 		""";
 
@@ -86,8 +89,8 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 		{
 			if(! r.Key.StartsWith('/'))
 				await Console.Error.WriteLineAsync($"[WARN] Route '{r.Key}' should start with '/'");
-			if(r.Value.Contains("/read/"))
-				await Console.Error.WriteLineAsync($"[WARN] Project link '{r.Value}' looks like a read-only link. You must use read-write links.");
+			if(r.Value.Link.Contains("/read/"))
+				await Console.Error.WriteLineAsync($"[WARN] Project link '{r.Value.Link}' looks like a read-only link. You must use read-write links.");
 		}
 
 		var routes = conf.Routes.ToArray();
@@ -98,7 +101,7 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 			try
 			{
 				var r = routes[i];
-				endpoints[i] = new Worker(await Endpoint.Create(r.Key, new Uri(r.Value)));
+				endpoints[i] = new Worker(await Endpoint.Create(r.Key, r.Value));
 			}
 			catch(Exception ex)
 			{

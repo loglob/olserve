@@ -4,7 +4,7 @@ using static Olspy.Protocol.CompileStatus;
 
 namespace Olserve;
 
-public class CompileFailedException(Protocol.CompileStatus status) : Exception("Compilation failed to produce a PDF")
+public class CompileFailedException(Protocol.CompileStatus status) : Exception($"Compilation failed to produce a PDF with error code {status}")
 {
 	public readonly Protocol.CompileStatus Status = status;
 

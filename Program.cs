@@ -47,7 +47,7 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 			await ctx.Response.OutputStream.WriteAsync(message);
 			ctx.Response.OutputStream.Close();
 
-			ctx.Response.Close();			
+			ctx.Response.Close();
 		}
 		catch(Exception ex)
 		{
@@ -93,23 +93,32 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 				await Console.Error.WriteLineAsync($"[WARN] Project link '{r.Value.Link}' looks like a read-only link. You must use read-write links.");
 		}
 
-		var routes = conf.Routes.ToArray();
-		var endpoints = new Worker[routes.Length];
+		var endpoints = new Worker[conf.Routes.Count];
 
 		Console.WriteLine("Initializing projects...");
-		await Parallel.ForAsync(0, routes.Length, async (i, _) => {
-			try
+		// Overleaf groups builds on the same project, so we can't build two targets on the same project in parallel
+		// or we'll get a TooRecentlyCompiled or CompileInProgress error
+		var concurrentGroups = conf.Routes
+			.Select((kvp, i) => (path: kvp.Key, conf: kvp.Value, i))
+			.GroupBy(ent => ent.conf.Link)
+			.Select(gr => gr.ToArray())
+			.ToArray();
+
+		await Parallel.ForAsync(0, concurrentGroups.Length, async (i, _) => {
+			foreach (var r in concurrentGroups[i])
 			{
-				var r = routes[i];
-				endpoints[i] = new Worker(await Endpoint.Create(r.Key, r.Value));
-			}
-			catch(Exception ex)
-			{
-				throw new Exception($"Failed to initialize route {routes[i].Key}", ex);
+				try
+				{
+					endpoints[r.i] = new Worker(await Endpoint.Create(r.path, r.conf));
+				}
+				catch(Exception ex)
+				{
+					throw new Exception($"Failed to initialize route {r.path}", ex);
+				}
 			}
 		});
 
-		Console.WriteLine($"Done setting up {routes.Length} routes");
+		Console.WriteLine($"Done setting up {endpoints.Length} routes");
 		return new(conf, endpoints.ToDictionary(e => e.Route));
 	}
 

@@ -5,7 +5,7 @@ namespace Olserve;
 
 public class Endpoint
 {
-	private record Revision( uint Version, byte[] Data );
+	private record Revision(uint Version, DateTime? Timestamp, byte[] Data);
 
 	private static async Task<Endpoint> Create(string route, Uri uri, string? path)
 	{
@@ -44,7 +44,7 @@ public class Endpoint
 	///  Actually runs a compile, without checking the current revision.
 	///  Data is only overwritten when the task actually completes successfully
 	/// </summary>
-	private async Task<byte[]> runCompile()
+	private async Task<Revision> runCompile(uint version, DateTime? timestamp)
 	{
 		string? mainID = null;
 
@@ -58,7 +58,7 @@ public class Endpoint
 			{
 				var msg = $"Path '{MainFile}' does not exist in project";
 				Console.WriteLine($"[WARN][{Route}] ${msg}");
-				throw new CompileFailedException(Protocol.CompileStatus.Failure, [msg]);
+				throw new CompileFailedException(Protocol.CompileStatus.Failure, [msg], null);
 			}
 
 
@@ -82,15 +82,15 @@ public class Endpoint
 					Console.WriteLine('\t' + line);
 			}
 
-			throw new CompileFailedException(cmp.Status, logs);
+			throw new CompileFailedException(cmp.Status, logs, timestamp);
 		}
 
-		var dat = await (await project.GetOutFile(pdf)).ReadAsByteArrayAsync();
+		var data = await (await project.GetOutFile(pdf)).ReadAsByteArrayAsync();
 
 		sw.Stop();
 		Console.WriteLine($"[INFO][{Route}] Compiled in {sw.ElapsedMilliseconds / 1e3}s");
 
-		return dat;
+		return new(version, timestamp, data);
 	}
 
 	/// <summary>
@@ -98,18 +98,19 @@ public class Endpoint
 	/// </summary>
 	public async Task Refresh()
 	{
-		var serverRev = (await project.GetUpdateHistory()).Select(h => h.ToV).FirstOrDefault(0u);
+		var lastUpdate = (await project.GetUpdateHistory()).FirstOrDefault((Protocol.Update?)null);
+		var serverRev = lastUpdate?.ToV ?? 0u;
+		var serverTime = lastUpdate?.Meta?.End;
 
 		if(current is null || serverRev > current.Version)
 		{
 			try
 			{
-				var data = await runCompile();
-				current = new(serverRev, data);
+				current = await runCompile(serverRev, serverTime);
 			}
 			catch(CompileFailedException cfe) when(cfe.Persistent && current is not null)
 			{
-				current = current with { Version = serverRev };
+				current = current with { Version = serverRev, Timestamp = serverTime };
 				throw;
 			}
 		}

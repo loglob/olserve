@@ -24,9 +24,9 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 		The configuration is an object containing:
 			- port (optional, default 80): The port to listen on for HTTP
 			- routes: A dictionary that maps HTTP paths onto build configurations, which are objects with:
-				- An object containing:
-					- link: A join link to an overleaf project
-					- mainFile (optional): A path within that project to the file to use as main file for compiling
+				- link: A join link to an overleaf project
+				- mainFile (optional): A path within that project to the file to use as main file for compiling
+				- hooks: A dictionary of event names (OnCompileFailed) to scripts to run
 		Note that route links must be read-write links, read-only links won't work.
 		""";
 

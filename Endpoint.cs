@@ -46,26 +46,9 @@ public class Endpoint
 	/// </summary>
 	private async Task<Revision> runCompile(uint version, DateTime? timestamp)
 	{
-		string? mainID = null;
-
-		if(MainFile is not null)
-		{
-			var info = await project.GetInfo(false);
-			var file = info.Project.RootFolder[0].Lookup(MainFile);
-
-			if(file is null)
-			{
-				var msg = $"Path '{MainFile}' does not exist in project";
-				Console.WriteLine($"[WARN][{Route}] ${msg}");
-				throw new CompileFailedException(Protocol.CompileStatus.Failure, [msg], null);
-			}
-
-			mainID = file.ID;
-		}
-
 		Stopwatch sw = new();
 		sw.Start();
-		var cmp = await project.Compile(rootDoc: mainID, stopOnFirstError: true);
+		var cmp = await project.Compile(rootResourcePath: MainFile, stopOnFirstError: true);
 
 		if(! cmp.IsSuccess(out var pdf))
 		{

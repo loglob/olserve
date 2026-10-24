@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -14,6 +16,7 @@ public interface IHook<T> where T : Exception
 public class ScriptHook : IHook<CompileFailedException>
 {
 	public readonly string Path;
+	public readonly ImmutableList<string> Args;
 	private readonly CancellationToken ct;
 	private readonly AwaitableQueue<ProcessStartInfo> backlog = new();
 	private volatile bool busy = false;
@@ -50,16 +53,17 @@ public class ScriptHook : IHook<CompileFailedException>
 		}
 	}
 
-	public ScriptHook(string path, CancellationToken ct = default)
+	public ScriptHook(string path, Collection<string> args, CancellationToken ct = default)
 	{
 		this.Path = path;
+		this.Args = [..args];
 		this.ct = ct;
 		this.worker = run();
 	}
 
 	public void Execute(string route, Endpoint endpoint, CompileFailedException exception)
 	{
-		ProcessStartInfo p = new(Path) {
+		ProcessStartInfo p = new(Path, Args) {
 			UseShellExecute = false,
 			CreateNoWindow = true
 		};

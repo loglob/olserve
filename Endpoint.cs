@@ -56,8 +56,9 @@ public class Endpoint
 
 			if(file is null)
 			{
-				Console.WriteLine($"[WARN][{Route}] Path '{MainFile}' does not exist in project");
-				throw new CompileFailedException(Protocol.CompileStatus.Failure);
+				var msg = $"Path '{MainFile}' does not exist in project";
+				Console.WriteLine($"[WARN][{Route}] ${msg}");
+				throw new CompileFailedException(Protocol.CompileStatus.Failure, [msg]);
 			}
 
 
@@ -69,7 +70,20 @@ public class Endpoint
 		var cmp = await project.Compile(mainID, stopOnFirstError: true);
 
 		if(! cmp.IsSuccess(out var pdf))
-			throw new CompileFailedException(cmp.Status);
+		{
+			var logs = await project.ReadLogs(cmp).ToListAsync();
+
+			if(logs.Count == 0)
+				Console.WriteLine("[Debug] No error log available");
+			else
+			{
+				Console.WriteLine("[Debug] Recent compile logs:");
+				foreach(var line in logs)
+					Console.WriteLine('\t' + line);
+			}
+
+			throw new CompileFailedException(cmp.Status, logs);
+		}
 
 		var dat = await (await project.GetOutFile(pdf)).ReadAsByteArrayAsync();
 

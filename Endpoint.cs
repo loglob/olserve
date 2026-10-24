@@ -53,7 +53,6 @@ public class Endpoint
 			var info = await project.GetInfo(false);
 			var file = info.Project.RootFolder[0].Lookup(MainFile);
 
-
 			if(file is null)
 			{
 				var msg = $"Path '{MainFile}' does not exist in project";
@@ -61,13 +60,12 @@ public class Endpoint
 				throw new CompileFailedException(Protocol.CompileStatus.Failure, [msg], null);
 			}
 
-
 			mainID = file.ID;
 		}
 
 		Stopwatch sw = new();
 		sw.Start();
-		var cmp = await project.Compile(mainID, stopOnFirstError: true);
+		var cmp = await project.Compile(rootDoc: mainID, stopOnFirstError: true);
 
 		if(! cmp.IsSuccess(out var pdf))
 		{

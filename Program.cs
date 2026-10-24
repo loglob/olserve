@@ -109,7 +109,7 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 			{
 				try
 				{
-					endpoints[r.i] = new Worker(await Endpoint.Create(r.path, r.conf));
+					endpoints[r.i] = new Worker(await Endpoint.Create(r.path, r.conf), null);
 				}
 				catch(Exception ex)
 				{

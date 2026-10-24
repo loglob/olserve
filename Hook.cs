@@ -6,12 +6,12 @@ namespace Olserve;
 /// <summary>
 /// A hook that fires on a program error
 /// </summary>
-interface IHook<T> where T : Exception
+public interface IHook<T> where T : Exception
 {
 	public abstract void Execute(string route, Endpoint endpoint, T exception);
 }
 
-class ScriptHook : IHook<CompileFailedException>
+public class ScriptHook : IHook<CompileFailedException>
 {
 	public readonly string Path;
 	private readonly CancellationToken ct;

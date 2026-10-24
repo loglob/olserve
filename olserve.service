@@ -10,7 +10,7 @@
 	WorkingDirectory=/srv/olserve/
 	ExecStart=/srv/olserve/olserve
 	Restart=on-failure
-	RestartSec=5s
+	RestartSec=20s
 	LimitCORE=0
 
 [Install]

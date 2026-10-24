@@ -109,7 +109,11 @@ public class Program(Config Conf, Dictionary<string, Worker> Routes)
 			{
 				try
 				{
-					endpoints[r.i] = new Worker(await Endpoint.Create(r.path, r.conf), null);
+					var hookConf = r.conf.Hooks?.OnCompileFailed;
+					
+					endpoints[r.i] = new Worker(await Endpoint.Create(r.path, r.conf)) {
+						OnCompileError = hookConf is not null ? new ScriptHook(hookConf) : null
+					};
 				}
 				catch(Exception ex)
 				{

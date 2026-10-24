@@ -8,9 +8,9 @@ namespace Olserve;
 /// <summary>
 /// A hook that fires on a program error
 /// </summary>
-public interface IHook<T> where T : Exception
+public interface IHook<T>
 {
-	public abstract void Execute(string route, Endpoint endpoint, T exception);
+	public void Execute(string route, Endpoint endpoint, T data);
 }
 
 public class ScriptHook : IHook<CompileFailedException>
@@ -53,7 +53,7 @@ public class ScriptHook : IHook<CompileFailedException>
 		}
 	}
 
-	public ScriptHook(string path, Collection<string> args, CancellationToken ct = default)
+	public ScriptHook(string path, IEnumerable<string> args, CancellationToken ct = default)
 	{
 		this.Path = path;
 		this.Args = [..args];
@@ -61,7 +61,28 @@ public class ScriptHook : IHook<CompileFailedException>
 		this.worker = run();
 	}
 
-	public void Execute(string route, Endpoint endpoint, CompileFailedException exception)
+	public ScriptHook(HookConfig conf) : this(conf.Program, conf.Args)
+	{}
+
+	private void configure(IDictionary<string,string?> env, CompileFailedException data)
+	{
+		env.Add("LOGS", string.Join('\n', data.Logs));
+
+		if(data.Persistent)
+			env.Add("PERSISTENT", "true");
+
+		// translate status code back to Overleaf API name
+		var apiStatus = JsonNamingPolicy.KebabCaseLower.ConvertName(data.Status.ToString());
+		env.Add("STATUS", apiStatus);
+		
+		if(data.RevisionTimestamp.HasValue)
+		{
+			var unixTime = ((DateTimeOffset)data.RevisionTimestamp.Value.ToUniversalTime()).ToUnixTimeSeconds();
+			env.Add("REVISION_TIME", unixTime.ToString());
+		}
+	}
+
+	private void execute<T>(string route, Endpoint endpoint, T data, Action<IDictionary<string, string?>, T> conf)
 	{
 		ProcessStartInfo p = new(Path, Args) {
 			UseShellExecute = false,
@@ -70,25 +91,18 @@ public class ScriptHook : IHook<CompileFailedException>
 		var env = p.Environment;
 
 		env.Add("ROUTE", route);
-		env.Add("MAIN_FILE", endpoint.MainFile);
-		env.Add("LOGS", string.Join('\n', exception.Logs));
 
-		if(exception.Persistent)
-			env.Add("PERSISTENT", "true");
-
-		// translate status code back to Overleaf API name
-		var apiStatus = JsonNamingPolicy.KebabCaseLower.ConvertName(exception.Status.ToString());
-		env.Add("STATUS", apiStatus);
-		
-		if(exception.RevisionTimestamp.HasValue)
-		{
-			var unixTime = ((DateTimeOffset)exception.RevisionTimestamp.Value.ToUniversalTime()).ToUnixTimeSeconds();
-			env.Add("REVISION_TIME", unixTime.ToString());
-		}
+		if(endpoint.MainFile is not null)
+			env.Add("MAIN_FILE", endpoint.MainFile);
 
 		if(busy)
 			env.Add("DELAYED", "true");
 
+		conf(env, data);
+
 		backlog.Enqueue(p);
 	}
+
+	public void Execute(string route, Endpoint endpoint, CompileFailedException data)
+		=> execute(route, endpoint, data, configure);
 }

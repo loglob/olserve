@@ -11,15 +11,14 @@ public class Worker
 	private Endpoint endpoint;
 	private readonly AwaitableQueue<HttpListenerContext> incoming = new();
 	private readonly Task workerTask;
-	private readonly ScriptHook? hook;
+	public IHook<CompileFailedException>? OnCompileError { get; init; } = null;
 
 	public string Route
 		=> endpoint.Route;
 
-	public Worker(Endpoint endpoint, ScriptHook? hook)
+	public Worker(Endpoint endpoint)
 	{
 		this.endpoint = endpoint;
-		this.hook = hook;		
 		this.workerTask = run();
 	}
 
@@ -56,7 +55,7 @@ public class Worker
 					? $"[WARN][{endpoint.Route}] Current revision doesn't compile, skipping it"
 					: $"[WARN][{endpoint.Route}] Transient compile error: {cfe.Status}"
 				);
-				hook?.Execute(Route, endpoint, cfe);
+				OnCompileError?.Execute(Route, endpoint, cfe);
 			}
 			catch(HttpStatusException hse) when (hse.StatusCode == HttpStatusCode.Forbidden)
 			{

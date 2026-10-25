@@ -5,6 +5,9 @@ namespace Olserve;
 
 public class Endpoint
 {
+	/// <param name="Version"> The overleaf version number. INCLUDES versions skipped due to compile error. </param>
+	/// <param name="Timestamp"> The timestamp of the last successful compile, if any. Does NOT include skipped versions. </param>
+	/// <param name="Data"> Raw PDF bytes for the compilation result. </param>
 	private record Revision(uint Version, DateTime? Timestamp, byte[] Data);
 
 	private static async Task<Endpoint> Create(string route, Uri uri, string? path)
@@ -63,7 +66,7 @@ public class Endpoint
 					Console.WriteLine('\t' + line);
 			}
 
-			throw new CompileFailedException(cmp.Status, logs, timestamp);
+			throw new CompileFailedException(cmp.Status, logs, timestamp, current?.Timestamp);
 		}
 
 		var data = await (await project.GetOutFile(pdf)).ReadAsByteArrayAsync();
@@ -91,7 +94,7 @@ public class Endpoint
 			}
 			catch(CompileFailedException cfe) when(cfe.Persistent && current is not null)
 			{
-				current = current with { Version = serverRev, Timestamp = serverTime };
+				current = current with { Version = serverRev };
 				throw;
 			}
 		}

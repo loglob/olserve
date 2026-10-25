@@ -46,3 +46,4 @@ They receive the preconfigured arguments, and some environment variables control
 | PERSISTENT | Set to `true` if the error indicates a persistent issue with the project code, rather than a transient service issue. Unset otherwise. |
 | STATUS | The status flag returned by the overleaf API, e.g. `stopped-on-first-error`, `too-recently-compiled`. |
 | REVISION_TIME | A whole-seconds unix timestamp of the latest edit of the project. May be unset if that information is not available. |
+| LAST_GOOD_REVISION | A whole-seconds unix timestamp of the last revision that compiled successfully. May be unset. |

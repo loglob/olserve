@@ -64,6 +64,15 @@ public class ScriptHook : IHook<CompileFailedException>
 	public ScriptHook(HookConfig conf) : this(conf.Program, conf.Args)
 	{}
 
+	private void setTimestamp(IDictionary<string,string?> env, string name, DateTime? time)
+	{
+		if(time.HasValue)
+		{
+			var unixTime = ((DateTimeOffset)time.Value.ToUniversalTime()).ToUnixTimeSeconds();
+			env.Add(name, unixTime.ToString());
+		}
+	}
+
 	private void configure(IDictionary<string,string?> env, CompileFailedException data)
 	{
 		env.Add("LOGS", string.Join('\n', data.Logs));
@@ -74,12 +83,9 @@ public class ScriptHook : IHook<CompileFailedException>
 		// translate status code back to Overleaf API name
 		var apiStatus = JsonNamingPolicy.KebabCaseLower.ConvertName(data.Status.ToString());
 		env.Add("STATUS", apiStatus);
-		
-		if(data.RevisionTimestamp.HasValue)
-		{
-			var unixTime = ((DateTimeOffset)data.RevisionTimestamp.Value.ToUniversalTime()).ToUnixTimeSeconds();
-			env.Add("REVISION_TIME", unixTime.ToString());
-		}
+
+		setTimestamp(env, "REVISION_TIME", data.RevisionTimestamp);
+		setTimestamp(env, "LAST_GOOD_REVISION", data.RevisionTimestamp);
 	}
 
 	private void execute<T>(string route, Endpoint endpoint, T data, Action<IDictionary<string, string?>, T> conf)
